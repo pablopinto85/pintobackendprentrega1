@@ -5,43 +5,21 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path'; 
 import cartsRouter from '../routes/carts.routes.js';
 import CartsManager from "../controller/CartsManager.js";
+import { readDataFromFile, writeDataToFile } from '../controller/fileutils.js';
+import productosPath from '../models/productos.json' assert { type: 'json' };
+import carritosPath from '../models/carrito.json' assert { type: 'json' };
+
 
 const app = express();
 const PORT = 8080;
-
-
-app.use(bodyParser.json());
-
-const productsRouter = express.Router();
-app.use('/api/products', productsRouter);
-app.use('/api/carts', cartsRouter);
 
 const currentFileURL = import.meta.url;
 const currentFilePath = fileURLToPath(currentFileURL);
 const currentDirectory = dirname(currentFilePath);
 
-const productosPath = join(currentDirectory, 'productos.json'); 
-const carritosPath = join(currentDirectory, 'carrito.json'); 
 
-function readDataFromFile(filePath) {
-  try {
-    const data = fs.readFileSync(filePath, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    return [];
-  }
-}
-
-
-function writeDataToFile(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-}
-
-
-
-
-const carritosdelete = new CartsManager(); 
-
+const productosData = readDataFromFile(productosPath);
+const carritosData = readDataFromFile(carritosPath);
 
 let productos = [
   { id: 1, title: 'Producto 1', description: "descripcion producto1", code: "121", price: 1000, stock: 100, category: "categoria 1", thumbnails: "/img/image1", status: true },
@@ -54,80 +32,26 @@ let productos = [
   { id: 8, title: 'Producto 8', description: "descripcion producto8", code: "128", price: 8000, stock: 800, category: "categoria 2", thumbnails: "/img/image8", status: true },
 ];
 
+const carritosdelete = new CartsManager(productosData);
 
-
-
-
-function generateUniqueId() {
-  return new Date().getTime();
-}
-
-
-productsRouter.get('/', (req, res) => {
-
-  const limit = req.query.limit || productos.length;
-  const limitedProducts = productos.slice(0, limit);
-  res.json(limitedProducts);
-});
-
-
-productsRouter.get('/:pid', (req, res) => {
-  const productId = parseInt(req.params.pid);
-  const product = productos.find((p) => p.id === productId);
-  if (product) {
-    res.json(product);
-  } else {
-    res.status(404).json({ error: 'Producto no encontrado' });
-  }
-});
-
-
-productsRouter.post('/', (req, res) => {
-  const {
-    title,
-    description,
-    code,
-    price,
-    stock,
-    category,
-    thumbnails,
-    status = true,
-  } = req.body;
-
-  if (!title || !description || !code || !price || !stock || !category) {
-    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
-  }
-
-
-  const newProduct = {
-    id: generateUniqueId(),
-    title,
-    description,
-    code,
-    price,
-    status,
-    stock,
-    category,
-    thumbnails: thumbnails || [],
-  };
-
-  productos.push(newProduct);
-  writeDataToFile(productosPath, productos); 
-  res.status(201).json(newProduct);
-});
-
-app.delete('/api/carts/:id', async (req, res) => {
-  const cartId = req.params.id;
+app.post('/api/carts/:cid/product/:pid', async (req, res) => {
+  const cartId = req.params.cid;
+  const productId = parseInt(req.params.pid, 10);
 
   try {
-    await carritosdelete.deleteCart(cartId);
-    console.log(`Carrito con ID ${cartId} eliminado correctamente`);
-    res.status(204).send();
+    const result = await carritosdelete.addProductToCart(cartId, productId);
+    
+    if (result === 'Carrito no encontrado') {
+      return res.status(404).json({ error: 'Carrito no encontrado' });
+    }
+
+    res.status(201).json({ message: result });
   } catch (error) {
-    console.error('Hubo un error al eliminar el carrito:', error);
-    res.status(500).json({ error: 'Hubo un error al eliminar el carrito' });
+    console.error('Hubo un error al agregar el producto al carrito:', error);
+    res.status(500).json({ error: 'Hubo un error al agregar el producto al carrito' });
   }
 });
+
 
 
 

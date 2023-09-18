@@ -1,12 +1,11 @@
 import { promises as fs } from "fs";
 import { nanoid } from "nanoid";
 import path from 'path';
-
-const __filename = new URL(import.meta.url).pathname;
-const __dirname = path.dirname(__filename);
+import { readDataFromFile, writeDataToFile } from './fileutils.js';
 
 class CartsManager {
-  constructor() {
+  constructor(productos) { 
+    this.productosData = productos; 
     this.filePath = path.join('./src/models/carrito.json');
   }
 
@@ -42,7 +41,7 @@ class CartsManager {
   async addCarts() {
     let id = nanoid();
     let cartsOld = await this.readCarts();
-    let allCarts = [...cartsOld, { id: id, productos: [] }];
+    let allCarts = [...cartsOld, { id: id, productosData: [] }];
     await this.writeCarts(allCarts);
     return `Carrito Creado Exitosamente.\n Carritos Existentes ${allCarts.length}`;
   }
@@ -50,30 +49,41 @@ class CartsManager {
   async getCartById(id) {
     let existCart = await this.exist(id);
     if (!existCart) return 404;
-    return existCart.productos;
+    return existCart.productosData;
   }
 
-  async addProductToCart(cartId, prodId) {
-    let cartById = await this.exist(cartId);
-    if (!cartById) return "error cart";
-    
-    
-    let productById = await products.exist(prodId);
-    if (!productById) return "error product";
-
-    const { productos } = cartById;
-    const existingProduct = productos.find((product) => product.id === prodId);
-
+  async addProductToCart(cartId, productId) {
+    const cartById = await this.getCartById(cartId);
+  
+    if (!cartById) {
+      throw new Error('Carrito no encontrado');
+    }
+  
+    const productToAdd = this.productosData.find((product) => product.id === productId);
+  
+    if (!productToAdd) {
+      return "Producto no encontrado";
+    }
+  
+    const { productosData } = cartById;
+    const existingProduct = productosData.find((product) => product.id === productId);
+  
     if (existingProduct) {
       existingProduct.quantity++;
-      await this.writeCarts([...carts, cartById]);
-      return `Producto "${productById.title}" agregado al carrito: ${cartId}\n Cantidad: ${existingProduct.quantity} `;
+      await this.writeCarts([...carts, cartById]); 
+      return `Producto "${existingProduct.title}" agregado al carrito: ${cartId}\n Cantidad: ${existingProduct.quantity} `;
     } else {
-      cartById.productos.push({ id: prodId, quantity: 1 });
-      await this.writeCarts([...carts, cartById]);
-      return `Producto "${productById.title}" agregado al carrito: ${cartId}`;
+      cartById.productosData.push({ ...productToAdd, quantity: 1 });
+      await this.writeCarts([...carts, cartById]); 
+      return `Producto "${productToAdd.title}" agregado al carrito: ${cartId}`;
     }
   }
 }
 
 export default CartsManager;
+
+const productosPath = '../models/productos.json';
+const carritosPath = '../models/carrito.json';
+const productosData = readDataFromFile(productosPath);
+const carritosData = readDataFromFile(carritosPath);
+const carritosdelete = new CartsManager(productosData);

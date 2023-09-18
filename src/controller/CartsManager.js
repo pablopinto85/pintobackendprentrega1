@@ -71,11 +71,11 @@ class CartsManager {
     if (existingProduct) {
       existingProduct.quantity++;
       await this.writeCarts([...carts, cartById]); 
-      return `Producto "${existingProduct.title}" agregado al carrito: ${cartId}\n Cantidad: ${existingProduct.quantity} `;
+      return `Producto "${existingProduct.title}" agregado al carrito exitosamente: ${cartId}\n Cantidad: ${existingProduct.quantity} `;
     } else {
       cartById.productosData.push({ ...productToAdd, quantity: 1 });
       await this.writeCarts([...carts, cartById]); 
-      return `Producto "${productToAdd.title}" agregado al carrito: ${cartId}`;
+      return `Producto "${productToAdd.title}" agregado al carrito exitosamente: ${cartId}`;
     }
   }
 }
